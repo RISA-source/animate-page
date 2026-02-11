@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rishi Saraff</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --paper: #f5f0e8;
+    --accent: #ff4d00;
+    --accent2: #ffd600;
+    --muted: #666;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--paper);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  @media (hover: hover) {
+    body { cursor: none; }
+    .cursor { display: block; }
+  }
+
+  .cursor {
+    display: none;
+    width: 10px; height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    mix-blend-mode: difference;
+    transition: width 0.15s, height 0.15s;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0.45;
+  }
+
+  .stage {
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 1rem 4rem;
+  }
+
+  /* ── SVG ─────────────────────────────────────── */
+  #canvas {
+    width: 100%;
+    max-width: 700px;
+    height: auto;
+    aspect-ratio: 700 / 420;
+    display: block;
+  }
+
+  @media (max-width: 480px) {
+    #canvas { aspect-ratio: 700 / 380; }
+    .stage { padding-top: 8vh; justify-content: flex-start; }
+  }
+
+  /* ── SVG Classes ─────────────────────────────── */
+  .ground     { stroke: var(--paper); stroke-width: 2; opacity: 0.2; }
+  .tower      { stroke: var(--paper); stroke-width: 2.5; fill: none; stroke-linecap: round; }
+  .stick      { stroke: var(--paper); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .stick-head { stroke: var(--paper); stroke-width: 3; fill: none; }
+  .creation      { stroke: var(--accent); stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+  .creation-glow { stroke: var(--accent); stroke-width: 7; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0; filter: blur(5px); }
+  .think-bubble  { opacity: 0; }
+  .debris        { opacity: 0; }
+
+  /* ── Tower interactive ───────────────────────── */
+  #creation-group { cursor: pointer; outline: none; }
+
+  .ping-ring {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    opacity: 0;
+  }
+
+  @keyframes pingRing1 {
+    0%   { r: 6;  opacity: 0.9; }
+    100% { r: 44; opacity: 0;   }
+  }
+  @keyframes pingRing2 {
+    0%   { r: 6;  opacity: 0.6; }
+    100% { r: 62; opacity: 0;   }
+  }
+
+  /* ── Text ────────────────────────────────────── */
+  .name-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1.9rem, 6.5vw, 4rem);
+    letter-spacing: -0.02em;
+    opacity: 0;
+    text-align: center;
+    margin-top: clamp(0.15rem, 1vw, 0.5rem);
+    line-height: 1.1;
+  }
+  .name-text span { color: var(--accent); }
+
+  .tagline {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(0.58rem, 1.8vw, 0.85rem);
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0;
+    margin-top: 0.4rem;
+    text-align: center;
+  }
+
+  /* ── Links ───────────────────────────────────── */
+  .links {
+    display: flex;
+    gap: clamp(0.6rem, 2vw, 1.4rem);
+    margin-top: clamp(1rem, 3vw, 1.8rem);
+    opacity: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .link-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(0.62rem, 1.6vw, 0.78rem);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--paper);
+    border: 1.5px solid rgba(245,240,232,0.2);
+    padding: clamp(0.45rem,1.5vw,0.6rem) clamp(0.9rem,2.5vw,1.4rem);
+    position: relative;
+    transition: color 0.2s, border-color 0.2s;
+    overflow: hidden;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .link-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--accent);
+    transform: translateX(-101%);
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    z-index: -1;
+  }
+  .link-btn:hover, .link-btn:focus-visible { color: var(--bg); border-color: var(--accent); outline: none; }
+  .link-btn:hover::before, .link-btn:focus-visible::before { transform: translateX(0); }
+
+  .link-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .link-btn.primary::before { background: var(--paper); }
+  .link-btn.primary:hover { color: var(--bg); }
+
+  /* ── Replay ──────────────────────────────────── */
+  #replay-btn {
+    display: none;
+    position: fixed;
+    bottom: 1.4rem; left: 1.4rem;
+    background: none;
+    border: 1.5px solid rgba(245,240,232,0.15);
+    color: rgba(245,240,232,0.3);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.45rem 0.8rem;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    min-height: 44px;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  #replay-btn.visible { display: flex; }
+  #replay-btn:hover { color: var(--paper); border-color: rgba(245,240,232,0.4); }
+  #replay-btn svg { width: 10px; height: 10px; flex-shrink: 0; }
+
+  /* ── Corner ──────────────────────────────────── */
+  .corner-tag {
+    position: fixed;
+    bottom: 1.4rem; right: 1.4rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.58rem;
+    color: rgba(245,240,232,0.14);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  @media (max-width: 380px) { .corner-tag { display: none; } }
+
+  /* ── Underline ───────────────────────────────── */
+  .name-wrap { position: relative; display: inline-block; }
+  .sketch-line {
+    position: absolute;
+    bottom: -5px; left: 0;
+    width: 0; height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ── Keyframes ───────────────────────────────── */
+  @keyframes fadeIn { to { opacity: 1; } }
+  @keyframes blink { 0%,100%{opacity:0.35} 50%{opacity:1} }
+
+  /* Tap hint on tower */
+  .tap-hint {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    fill: rgba(245,240,232,0.28);
+    text-anchor: middle;
+    opacity: 0;
+    animation: blink 2.2s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+
+<div class="stage">
+<svg id="canvas" viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Ground -->
+  <line class="ground" x1="50" y1="380" x2="650" y2="380"/>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- EIFFEL TOWER                               -->
+  <!-- ══════════════════════════════════════════ -->
+  <g id="eiffel-group">
+    <line class="tower" id="t1"  x1="280" y1="380" x2="310" y2="280" stroke-dasharray="110" stroke-dashoffset="110"/>
+    <line class="tower" id="t2"  x1="420" y1="380" x2="390" y2="280" stroke-dasharray="110" stroke-dashoffset="110"/>
+    <line class="tower" id="t3"  x1="310" y1="280" x2="390" y2="280" stroke-dasharray="80"  stroke-dashoffset="80"/>
+    <line class="tower" id="t4"  x1="310" y1="280" x2="330" y2="200" stroke-dasharray="90"  stroke-dashoffset="90"/>
+    <line class="tower" id="t5"  x1="390" y1="280" x2="370" y2="200" stroke-dasharray="90"  stroke-dashoffset="90"/>
+    <line class="tower" id="t6"  x1="330" y1="200" x2="370" y2="200" stroke-dasharray="40"  stroke-dashoffset="40"/>
+    <line class="tower" id="t7"  x1="330" y1="200" x2="345" y2="130" stroke-dasharray="80"  stroke-dashoffset="80"/>
+    <line class="tower" id="t8"  x1="370" y1="200" x2="355" y2="130" stroke-dasharray="80"  stroke-dashoffset="80"/>
+    <line class="tower" id="t9"  x1="345" y1="130" x2="350" y2="80"  stroke-dasharray="55"  stroke-dashoffset="55"/>
+    <line class="tower" id="t10" x1="355" y1="130" x2="350" y2="80"  stroke-dasharray="55"  stroke-dashoffset="55"/>
+    <line class="tower" id="t11" x1="285" y1="355" x2="350" y2="310" stroke-dasharray="70"  stroke-dashoffset="70" stroke-width="1.5" opacity="0.6"/>
+    <line class="tower" id="t12" x1="415" y1="355" x2="350" y2="310" stroke-dasharray="70"  stroke-dashoffset="70" stroke-width="1.5" opacity="0.6"/>
+    <line class="tower" id="t13" x1="315" y1="250" x2="350" y2="235" stroke-dasharray="40"  stroke-dashoffset="40" stroke-width="1.5" opacity="0.6"/>
+    <line class="tower" id="t14" x1="385" y1="250" x2="350" y2="235" stroke-dasharray="40"  stroke-dashoffset="40" stroke-width="1.5" opacity="0.6"/>
+  </g>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- STICKMAN                                   -->
+  <!-- ══════════════════════════════════════════ -->
+  <g id="stickman" transform="translate(-80,330)">
+    <circle class="stick-head" id="s-head" cx="0" cy="-50" r="12"/>
+    <line class="stick" id="s-body" x1="0" y1="-38" x2="0"   y2="0"/>
+    <line class="stick" id="s-arm-l" x1="0" y1="-28" x2="-18" y2="-12"/>
+    <line class="stick" id="s-arm-r" x1="0" y1="-28" x2="18"  y2="-12"/>
+    <line class="stick" id="s-leg-l" x1="0" y1="0"   x2="-14" y2="20"/>
+    <line class="stick" id="s-leg-r" x1="0" y1="0"   x2="14"  y2="20"/>
+  </g>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- THINKING BUBBLE                            -->
+  <!-- ══════════════════════════════════════════ -->
+  <g class="think-bubble" id="think-bubble">
+    <circle cx="200" cy="258" r="3"   fill="rgba(245,240,232,0.4)"/>
+    <circle cx="211" cy="247" r="4.5" fill="rgba(245,240,232,0.4)"/>
+    <circle cx="224" cy="238" r="6"   fill="rgba(245,240,232,0.4)"/>
+    <rect x="230" y="210" width="90" height="52" rx="12"
+          fill="rgba(245,240,232,0.06)" stroke="rgba(245,240,232,0.3)" stroke-width="1.5"/>
+    <circle cx="265" cy="229" r="10" stroke="var(--accent2)" stroke-width="2" fill="none"/>
+    <line x1="262" y1="239" x2="268" y2="239" stroke="var(--accent2)" stroke-width="2"/>
+    <line x1="263" y1="243" x2="267" y2="243" stroke="var(--accent2)" stroke-width="2"/>
+    <line x1="265" y1="215" x2="265" y2="218" stroke="var(--accent2)" stroke-width="1.5"/>
+    <line x1="255" y1="219" x2="257" y2="221" stroke="var(--accent2)" stroke-width="1.5"/>
+    <line x1="275" y1="219" x2="273" y2="221" stroke="var(--accent2)" stroke-width="1.5"/>
+    <text id="think-text" x="284" y="235" font-family="Space Mono" font-size="13"
+          fill="rgba(245,240,232,0.7)">?</text>
+  </g>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- DEBRIS                                     -->
+  <!-- ══════════════════════════════════════════ -->
+  <g class="debris" id="debris-group">
+    <line x1="260" y1="360" x2="288" y2="343" stroke="rgba(245,240,232,0.45)" stroke-width="2"/>
+    <line x1="400" y1="356" x2="428" y2="346" stroke="rgba(245,240,232,0.45)" stroke-width="2"/>
+    <line x1="312" y1="370" x2="330" y2="357" stroke="rgba(245,240,232,0.45)" stroke-width="2"/>
+    <line x1="370" y1="368" x2="393" y2="359" stroke="rgba(245,240,232,0.45)" stroke-width="2"/>
+    <line x1="282" y1="375" x2="300" y2="366" stroke="rgba(245,240,232,0.25)" stroke-width="1.5"/>
+    <line x1="415" y1="372" x2="438" y2="363" stroke="rgba(245,240,232,0.25)" stroke-width="1.5"/>
+  </g>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- NEW CREATION — clickable/tappable          -->
+  <!-- ══════════════════════════════════════════ -->
+  <g id="creation-group" tabindex="0" role="button" aria-label="Signal tower — tap to ping">
+
+    <!-- Glow behind -->
+    <g class="creation-glow">
+      <line x1="350" y1="380" x2="350" y2="200"/>
+      <line x1="310" y1="380" x2="390" y2="380"/>
+    </g>
+
+    <!-- Structure -->
+    <g class="creation" id="new-build">
+      <line x1="310" y1="380" x2="390" y2="380" stroke-width="3"/>
+      <line x1="350" y1="380" x2="350" y2="200"/>
+      <line x1="310" y1="380" x2="340" y2="300"/>
+      <line x1="390" y1="380" x2="360" y2="300"/>
+      <line x1="333" y1="300" x2="367" y2="300"/>
+      <line x1="340" y1="300" x2="345" y2="225"/>
+      <line x1="360" y1="300" x2="355" y2="225"/>
+      <line x1="345" y1="225" x2="355" y2="225"/>
+      <line x1="350" y1="200" x2="350" y2="156"/>
+      <path d="M337,218 Q350,210 363,218" stroke-width="2.5" fill="none"/>
+      <path d="M332,188 Q350,173 368,188" stroke-width="2" fill="none"/>
+      <path d="M322,196 Q350,174 378,196" stroke-width="1.5" fill="none" opacity="0.7"/>
+      <line x1="373" y1="178" x2="385" y2="167"/>
+      <line x1="377" y1="184" x2="392" y2="181"/>
+      <line x1="327" y1="178" x2="315" y2="167"/>
+      <line x1="323" y1="184" x2="308" y2="181"/>
+      <circle cx="391" cy="166" r="3.5" fill="var(--accent)"  stroke="none" class="ping1"/>
+      <circle cx="309" cy="166" r="3.5" fill="var(--accent)"  stroke="none" class="ping2"/>
+      <circle cx="350" cy="152" r="3.5" fill="var(--accent2)" stroke="none" class="ping3"/>
+    </g>
+
+    <!-- Ping rings (animated on click/tap) -->
+    <circle class="ping-ring" id="ring1" cx="350" cy="166" r="6"/>
+    <circle class="ping-ring" id="ring2" cx="350" cy="166" r="6"/>
+
+    <!-- Invisible hit area for easy tapping -->
+    <rect x="300" y="140" width="100" height="250" fill="transparent"/>
+
+    <!-- Tap/click hint -->
+    <text class="tap-hint" id="tap-hint" x="350" y="408">tap to ping</text>
+  </g>
+
+</svg>
+
+  <div class="name-wrap">
+    <h1 class="name-text" id="name-el">Rishi <span>Saraff</span></h1>
+    <div class="sketch-line" id="sketch-line"></div>
+  </div>
+  <p class="tagline" id="tagline-el">Building &amp; Breaking Things</p>
+
+  <nav class="links" id="links-el">
+    <a href="https://github.com/RISA-source" class="link-btn primary" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://ai.rishisaraff.com.np"   class="link-btn"         target="_blank" rel="noopener">ai. →</a>
+    <a href="mailto:hello@rishisaraff.com.np"  class="link-btn">Contact</a>
+  </nav>
+</div>
+
+<button id="replay-btn" aria-label="Replay animation">
+  <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 6A4 4 0 1 1 6 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M5.5 0.5L7.5 2.5L5.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  Replay
+</button>
+
+<div class="corner-tag">rishisaraff.com.np</div>
+
+<script>
+// ── Cursor ────────────────────────────────────────────
+const cursor = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top  = e.clientY + 'px';
+});
+document.addEventListener('mousedown', () => { cursor.style.width = cursor.style.height = '6px'; });
+document.addEventListener('mouseup',   () => { cursor.style.width = cursor.style.height = '10px'; });
+
+// ── Utils ─────────────────────────────────────────────
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const setA = (el, a, v) => el.setAttribute(a, v);
+
+function drawLine(el, dur) {
+  return new Promise(r => {
+    el.style.transition = `stroke-dashoffset ${dur}ms ease`;
+    el.style.strokeDashoffset = '0';
+    setTimeout(r, dur);
+  });
+}
+
+// ── Grab elements ─────────────────────────────────────
+const stickman    = document.getElementById('stickman');
+const sArmL       = document.getElementById('s-arm-l');
+const sArmR       = document.getElementById('s-arm-r');
+const sLegL       = document.getElementById('s-leg-l');
+const sLegR       = document.getElementById('s-leg-r');
+const thinkBubble = document.getElementById('think-bubble');
+const thinkText   = document.getElementById('think-text');
+const debrisGroup = document.getElementById('debris-group');
+const eiffelGroup = document.getElementById('eiffel-group');
+const newBuild    = document.getElementById('new-build');
+const creGlow     = document.querySelector('.creation-glow');
+const nameEl      = document.getElementById('name-el');
+const taglineEl   = document.getElementById('tagline-el');
+const linksEl     = document.getElementById('links-el');
+const sketchLine  = document.getElementById('sketch-line');
+const replayBtn   = document.getElementById('replay-btn');
+const tapHint     = document.getElementById('tap-hint');
+const creGroup    = document.getElementById('creation-group');
+const ring1       = document.getElementById('ring1');
+const ring2       = document.getElementById('ring2');
+const towerLines  = Array.from({length:14}, (_,i) => document.getElementById(`t${i+1}`));
+
+// ── Stickman helpers ──────────────────────────────────
+function smSet(x) { stickman.setAttribute('transform', `translate(${x},330)`); }
+function smMove(x, dur) {
+  stickman.style.transition = `transform ${dur}ms linear`;
+  smSet(x);
+}
+
+let walkTimer = null;
+function startWalk() {
+  let f = 0;
+  walkTimer = setInterval(() => {
+    f++;
+    const s = f % 2 === 0 ? 1 : -1;
+    setA(sLegL,'x2', -14+s*8); setA(sLegL,'y2',20);
+    setA(sLegR,'x2',  14-s*8); setA(sLegR,'y2',20);
+    setA(sArmL,'x2', -18-s*5); setA(sArmL,'y2',-12);
+    setA(sArmR,'x2',  18+s*5); setA(sArmR,'y2',-12);
+  }, 195);
+}
+function stopWalk() {
+  clearInterval(walkTimer);
+  setA(sLegL,'x2',-14); setA(sLegL,'y2',20);
+  setA(sLegR,'x2', 14); setA(sLegR,'y2',20);
+  setA(sArmL,'x2',-18); setA(sArmL,'y2',-12);
+  setA(sArmR,'x2', 18); setA(sArmR,'y2',-12);
+}
+
+// ── Tower collapse ────────────────────────────────────
+function collapseTower() {
+  return new Promise(r => {
+    let n = 0;
+    const shake = setInterval(() => {
+      n++;
+      eiffelGroup.setAttribute('transform', `translate(${n%2===0?5:-5},0)`);
+      if (n > 7) {
+        clearInterval(shake);
+        eiffelGroup.setAttribute('transform','');
+        eiffelGroup.style.transformOrigin = '350px 380px';
+        eiffelGroup.style.transition = 'transform 0.85s ease-in, opacity 0.75s ease';
+        eiffelGroup.style.transform  = 'rotate(36deg) translateY(65px)';
+        eiffelGroup.style.opacity    = '0';
+        debrisGroup.style.opacity    = '1';
+        setTimeout(r, 950);
+      }
+    }, 75);
+  });
+}
+
+// ── Build new creation ────────────────────────────────
+async function buildCreation() {
+  newBuild.style.opacity = '1';
+  creGlow.style.opacity  = '0.22';
+  const els = newBuild.querySelectorAll('line, path, circle');
+  for (let i = 0; i < els.length; i++) {
+    const el = els[i];
+    if (el.tagName === 'line') {
+      const len = 100;
+      el.style.strokeDasharray  = len;
+      el.style.strokeDashoffset = len;
+      el.getBoundingClientRect();
+      el.style.transition = 'stroke-dashoffset 0.22s ease';
+      el.style.strokeDashoffset = 0;
+    } else if (el.tagName === 'path') {
+      el.style.opacity = '0';
+      el.getBoundingClientRect();
+      el.style.transition = 'opacity 0.25s ease';
+      el.style.opacity = '1';
+    } else {
+      // circles
+      el.style.opacity = '0';
+      el.getBoundingClientRect();
+      el.style.transition = 'opacity 0.3s ease';
+      el.style.opacity = '1';
+    }
+    await wait(52);
+  }
+  await wait(200);
+}
+
+// ── Tower ping interaction ────────────────────────────
+let pingCooling = false;
+
+function doPing() {
+  if (pingCooling) return;
+  pingCooling = true;
+  setTimeout(() => pingCooling = false, 900);
+
+  // Rings burst
+  [ring1, ring2].forEach((r, i) => {
+    r.style.animation = 'none';
+    r.getBoundingClientRect();
+    r.style.animation = `${i===0?'pingRing1':'pingRing2'} ${i===0?0.75:1.05}s ease-out ${i*0.18}s forwards`;
+  });
+
+  // Ping dots flash
+  document.querySelectorAll('.ping1,.ping2,.ping3').forEach((p, i) => {
+    setTimeout(() => {
+      p.style.transition = 'r 0.18s ease';
+      p.setAttribute('r', '8');
+      p.style.fill = 'var(--accent2)';
+      setTimeout(() => {
+        p.setAttribute('r', '3.5');
+        p.style.fill = i === 2 ? 'var(--accent2)' : 'var(--accent)';
+      }, 240);
+    }, i * 110);
+  });
+
+  // Structure flash
+  newBuild.style.transition = 'filter 0.12s ease, stroke 0.12s ease';
+  newBuild.style.filter = 'drop-shadow(0 0 14px var(--accent)) brightness(1.5)';
+  setTimeout(() => { newBuild.style.filter = 'drop-shadow(0 0 4px var(--accent))'; }, 180);
+  setTimeout(() => { newBuild.style.filter = ''; }, 500);
+}
+
+// ── Reveal end state ──────────────────────────────────
+function revealEnd() {
+  nameEl.style.animation    = 'fadeIn 0.7s ease forwards';
+  setTimeout(() => taglineEl.style.animation = 'fadeIn 0.7s ease forwards', 220);
+  setTimeout(() => linksEl.style.animation   = 'fadeIn 0.7s ease forwards', 520);
+  setTimeout(() => {
+    sketchLine.style.transition = 'width 0.55s ease';
+    sketchLine.style.width = '100%';
+  }, 720);
+  setTimeout(() => {
+    tapHint.style.opacity = '0.6';
+    replayBtn.classList.add('visible');
+  }, 1300);
+}
+
+// ── Reset ─────────────────────────────────────────────
+function resetAll() {
+  stopWalk();
+  stickman.style.transition = '';
+  stickman.style.opacity = '1';
+  smSet(-80);
+
+  eiffelGroup.style.cssText = '';
+  towerLines.forEach(l => {
+    l.style.transition = '';
+    const da = l.getAttribute('stroke-dasharray');
+    l.style.strokeDashoffset = da;
+    l.setAttribute('stroke-dashoffset', da);
+  });
+
+  debrisGroup.style.cssText = 'opacity:0';
+  newBuild.style.opacity    = '0';
+  creGlow.style.opacity     = '0';
+
+  // Reset all build element dash/opacity
+  newBuild.querySelectorAll('line,path,circle').forEach(el => {
+    el.style.transition = '';
+    if (el.tagName === 'line') {
+      el.style.strokeDashoffset = '100';
+      el.style.strokeDasharray  = '100';
+    } else {
+      el.style.opacity = '';
+    }
+  });
+
+  thinkBubble.style.cssText = 'opacity:0';
+  thinkText.textContent = '?';
+  thinkText.style.fill = 'rgba(245,240,232,0.7)';
+
+  nameEl.style.cssText     = 'opacity:0';
+  taglineEl.style.cssText  = 'opacity:0';
+  linksEl.style.cssText    = 'opacity:0';
+  sketchLine.style.cssText = 'width:0';
+  tapHint.style.opacity    = '0';
+  replayBtn.classList.remove('visible');
+}
+
+// ── Main sequence ─────────────────────────────────────
+async function runAnimation() {
+  // 1. Draw tower
+  await wait(300);
+  for (let i = 0; i < towerLines.length; i++) {
+    await drawLine(towerLines[i], i < 6 ? 170 : 108);
+    await wait(22);
+  }
+
+  // 2. Stickman walks in
+  await wait(240);
+  startWalk();
+  smMove(182, 1100);
+  await wait(1150);
+  stopWalk();
+
+  // 3. Walk to tower
+  await wait(140);
+  startWalk();
+  smMove(250, 640);
+  await wait(680);
+  stopWalk();
+  await wait(80);
+  setA(sArmR,'x2',44); setA(sArmR,'y2',-47);
+  await wait(320);
+
+  // 4. Collapse!
+  await collapseTower();
+
+  // 5. Shocked
+  setA(sArmL,'x2',-23); setA(sArmL,'y2',-52);
+  setA(sArmR,'x2', 23); setA(sArmR,'y2',-52);
+  stickman.style.transition = 'transform 0.28s ease';
+  smSet(216);
+  await wait(460);
+
+  // 6. Think
+  setA(sArmR,'x2',14); setA(sArmR,'y2',-45);
+  setA(sArmL,'x2',-18); setA(sArmL,'y2',-12);
+  thinkBubble.style.transition = 'opacity 0.42s ease';
+  thinkBubble.style.opacity = '1';
+  await wait(880);
+  thinkText.textContent = '!';
+  thinkText.style.fill = 'var(--accent)';
+  await wait(530);
+
+  // 7. Move center, build
+  thinkBubble.style.opacity = '0';
+  debrisGroup.style.transition = 'opacity 0.45s';
+  debrisGroup.style.opacity = '0.2';
+  await wait(340);
+  startWalk();
+  smMove(292, 530);
+  await wait(570);
+  stopWalk();
+  setA(sArmL,'x2',-29); setA(sArmL,'y2',-53);
+  setA(sArmR,'x2', 29); setA(sArmR,'y2',-53);
+  await wait(240);
+
+  // 8. Build
+  await buildCreation();
+
+  // 9. Celebrate
+  await wait(160);
+  setA(sArmL,'x2',-24); setA(sArmL,'y2',-60);
+  setA(sArmR,'x2', 24); setA(sArmR,'y2',-60);
+  await wait(520);
+
+  // 10. Walk off
+  startWalk();
+  smMove(780, 1100);
+  await wait(1150);
+  stopWalk();
+  stickman.style.transition = 'opacity 0.32s ease';
+  stickman.style.opacity = '0';
+
+  // 11. Reveal
+  await wait(170);
+  debrisGroup.style.opacity = '0';
+  revealEnd();
+}
+
+// ── Tower interactions ────────────────────────────────
+let animDone = false;
+
+creGroup.addEventListener('click', () => { if (animDone) doPing(); });
+creGroup.addEventListener('keydown', e => { if ((e.key==='Enter'||e.key===' ') && animDone) { e.preventDefault(); doPing(); } });
+creGroup.addEventListener('touchend', e => {
+  if (!animDone) return;
+  e.preventDefault();
+  doPing();
+}, { passive: false });
+
+// ── Replay ────────────────────────────────────────────
+replayBtn.addEventListener('click', () => {
+  animDone = false;
+  resetAll();
+  setTimeout(async () => {
+    await runAnimation();
+    animDone = true;
+  }, 160);
+});
+
+// ── Boot ──────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  await wait(350);
+  await runAnimation();
+  animDone = true;
+});
+</script>
+</body>
+</html>
